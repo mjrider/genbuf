@@ -1,21 +1,3 @@
-/*Generic multiplexing line buffering tool
- * Copyright (C) 2004 Justin Ossevoort
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 #include "output.h"
 
 #include <sys/select.h>
@@ -30,7 +12,7 @@
 int deliver_message (struct output_handler *handler, char *msg)
 {
 	struct timeval timeout;
-	int todo, retry, msglen;
+	int todo, retry, msglen, s;
 	fd_set fds;
 
 	/* Initialize variables */
@@ -44,10 +26,7 @@ int deliver_message (struct output_handler *handler, char *msg)
 		/* If not connected, connect */
 		if (handler->state == os_disconnected)
 		{
-			if (!handler->connect(handler))
-			{
-				retry--;
-			}
+			handler->connect(handler);
 		}
 
 		/* If valid filedescriptor, listen for signals */
@@ -58,10 +37,20 @@ int deliver_message (struct output_handler *handler, char *msg)
 		}
 		
 		/* Set maximum timeout */
-		timeout.tv_sec  = 10;
+		timeout.tv_sec  = 30;
 		timeout.tv_usec = 0;
+
+		/* Perform select */
+		if (handler->state == os_ready || handler->state == os_sending)
+			s = select(handler->fd + 1, NULL, &fds, NULL, &timeout);
+		else
+		{
+			timeout.tv_sec = 5;
+			s = select(0, NULL, NULL, NULL, &timeout);
+		}
 		
-		switch(select(handler->fd + 1, NULL, &fds, NULL, &timeout))
+		/* Determine select status */
+		switch(s)
 		{
 			/* Error occured */
 			case -1:
@@ -70,28 +59,32 @@ int deliver_message (struct output_handler *handler, char *msg)
 
 			/* Timeout occured */
 			case 0:
-				Log2(debug, "Output handling timeout", "[output.c]{deliver_message}");
+				Log2(warning, "Output handling timeout", "[output.c]{deliver_message}");
 				retry--;
 				break;
 
 			/* Activity on filedescriptor */
 			default:
-				Log2(debug, "Output is active", "[output.c]{deliver_message}");
+				Log2(warning, "Output is active", "[output.c]{deliver_message}");
 				switch (handler->state)
 				{
 					/* Try to connect */
 					case os_disconnected:
+						CustomLog(__FILE__, __LINE__, warning, "Trying to connect output channel!");
 						handler->connect(handler);
 						break;
 						
 					/* Check if connection is established */
 					case os_connecting:
+						CustomLog(__FILE__, __LINE__, warning, "Still connecting output channel!");
 						handler->connect(handler);
 						break;
 					
 					/* Try to send the message */
 					case os_ready:
 					case os_sending:
+						retry = 3;
+						CustomLog(__FILE__, __LINE__, warning, "Trying to send message(msg=%p, msglen=%d, cont=%p)!", msg, msglen, todo);
 						if (FD_ISSET(handler->fd, &fds) && handler->write(handler, msg, msglen, &todo))
 						{
 							/* Write succesfully completed */
@@ -101,6 +94,7 @@ int deliver_message (struct output_handler *handler, char *msg)
 						
 					/* Do a reset */
 					case os_error:
+						CustomLog(__FILE__, __LINE__, warning, "Resetting output channel!");
 						break;
 						
 					/* Impossible */

@@ -1,21 +1,3 @@
-/*Generic multiplexing line buffering tool
- * Copyright (C) 2004 Justin Ossevoort
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 #include "defines.h"
 
 #include <pthread.h>
@@ -50,18 +32,26 @@ static void signal_handler (int signal)
 		/* Nice shutdown requested */
 		case SIGHUP:
 		case SIGTERM:
+			fprintf(stderr, "I got shutdown signal: %d\n", signal);
 			pthread_cancel(readthread);
 			break;
 
 		/* Ignore other signals */
 		default:
-			fprintf(stderr, "I ignored signal:%d\n", signal);
+			fprintf(stderr, "I ignored signal: %d\n", signal);
 			return;
 	}
 }
 
 static void run (struct reader *rd, struct logger *ld)
 {
+	/* Ignore signals for rest of threads */
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGTERM, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+
+	Log(error, "Starting threads!\n");
+
 	/* Create the worker threads */
 	SysFatal(pthread_create(&logthread,  NULL, (void*) ld->run, ld), errno, "On logger thread start");
 	SysFatal(pthread_create(&readthread, NULL, (void*) rd->run, rd), errno, "On reader thread start");
@@ -71,13 +61,19 @@ static void run (struct reader *rd, struct logger *ld)
 	signal(SIGTERM, signal_handler);
 	signal(SIGPIPE, signal_handler);
 
+	Log(error, "Waiting for readthread to terminate!\n");
+
 	/* Wait for the reader to finish and cleanup */
 	SysFatal(pthread_join(readthread, NULL), errno, "While waiting for reader thread to finish");
 	rd->cleanup(rd);
 
+	Log(error, "Waiting for logthread to terminate!\n");
+
 	/* Wait for the logger to finish and cleanup */
 	SysFatal(pthread_join(logthread, NULL), errno, "While waiting for logger thread to finish");
 	ld->cleanup(ld);
+
+	Log(error, "All threads terminated!\n");
 }
 
 static int parse_type (char *type)
@@ -106,6 +102,7 @@ int main (int argc, char **argv)
 	char *out_res = NULL;
 	char *in_res = NULL;
 	int c;
+
 	static struct option long_options[] =
 	{
 		{"verbose",     no_argument,       NULL, 'v'},
@@ -121,6 +118,8 @@ int main (int argc, char **argv)
 		{ NULL,         0,                 NULL,  0 }
 	};
 	int option_index = 0;
+
+	Log(critical, "Genbuf starting!\n");
 
 	buffer = buffer_init();
 	rd     = reader_init(buffer);
@@ -259,6 +258,6 @@ int main (int argc, char **argv)
 	buffer_cleanup(buffer);
 
 	/* All went well, exit */
-	Log(info, "Program finished succesfully..");
+	Log(critical, "Program finished succesfully..");
 	return EXIT_SUCCESS;
 }

@@ -1,25 +1,8 @@
-/*Generic multiplexing line buffering tool
- * Copyright (C) 2004 Justin Ossevoort
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 #include "defines.h"
 #include "log.h"
 
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -33,6 +16,80 @@ enum log_levels current_log_level = impossible;
 static int my_strftime(char *buf, int buflen, const char *format, const struct tm *thetime)
 {
 	return strftime(buf, buflen, format, thetime);
+}
+
+/* Report something */
+void CustomLog (const char *file, const int line, enum log_levels level, const char *format, ...)
+{
+	char timespec[TIMESPEC_LEN];
+	struct tm *localized;
+	time_t now;
+	va_list ap;
+
+	/* Check if we shoud log this */
+	if (level > current_log_level)
+		return;
+	
+	/* Resolve the localized time */
+	time(&now);
+	localized = localtime(&now);
+	my_strftime(timespec, TIMESPEC_LEN, "%c", localized);
+
+	/* Lock the error log stream */
+	flockfile(stderr);
+
+	/* Print the date,program,program-location header of the log */
+	fprintf(stderr, ">>> %s genbuf {%s:%d}: ", timespec, file, line);
+
+	/* Print the given formatted string */
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+
+	/* Print trailer */
+	fprintf(stderr, "\n");
+
+	/* We're done, unlock the error log stream */
+	funlockfile(stderr);
+}
+
+/* Report a system error */
+void CustomSystemError (const char *file, const int line, enum log_levels level, int fatal, int err, const char *format, ...)
+{
+	char timespec[TIMESPEC_LEN];
+	struct tm *localized;
+	time_t now;
+	va_list ap;
+
+	/* Check if we shoud log this */
+	if (level > current_log_level)
+		return;
+	
+	/* Resolve the localized time */
+	time(&now);
+	localized = localtime(&now);
+	my_strftime(timespec, TIMESPEC_LEN, "%c", localized);
+
+	/* Lock the error log stream */
+	flockfile(stderr);
+
+	/* Print the date,program,program-location header of the log */
+	fprintf(stderr, ">>> %s genbuf {%s:%d}: ", timespec, file, line);
+
+	/* Print the given formatted string */
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+
+	/* Print trailer */
+	fprintf(stderr, ": \"%s\"\n", strerror(err));
+
+	/* We're done, unlock the error log stream */
+	funlockfile(stderr);
+
+	/* Terminate if necessary */
+	if (fatal)
+		abort();
 }
 
 void Log2 (enum log_levels level, const char *err, const char *msg)

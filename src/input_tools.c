@@ -1,21 +1,3 @@
-/*Generic multiplexing line buffering tool
- * Copyright (C) 2004 Justin Ossevoort
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 #include "defines.h"
 #include "input_tools.h"
 
@@ -26,41 +8,15 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
+#include <sys/ioctl.h>
 
 #include "input_buffer.h"
 #include "log.h"
 
-void set_error (struct input_handler *this, char *err, char *msg)
-{
-	/* Calculate the error message size (+2 for ': ') */
-	int errlen, msglen, len;
-
-	errlen = strlen(err);
-	msglen = strlen(msg);
-	len    = errlen + msglen + 2;
-
-	/* If old error present, clear it */
-	if (this->err != NULL)
-	{
-		free(this->err);
-	}
-
-	/* Allocate buffer for error message */
-	this->err = malloc (len + 1);
-
-	/* Check buffer allocation */
-	SysFatal(this->err == NULL, errno, "On error message allocation");
-
-	/* Fill buffer */
-	memcpy(this->err, err, errlen);
-	memcpy(this->err + errlen, ": ", 2);
-	memcpy(this->err + errlen + 2, msg, msglen);
-	this->err[errlen] = '\0';
-}
-
 int input_handler_common_read (struct input_handler *this, struct reader *report)
 {
-	int err, readcount;
+	int err, readcount, maxread;
 	char *msg;
 
 	Log2(debug, "Read requested", "[input_tools.c]{read}");
@@ -75,7 +31,28 @@ int input_handler_common_read (struct input_handler *this, struct reader *report
 	/* Read data */
 	Require (DATA->inbuf->write > 0);
 	Require (DATA->inbuf->available > 0);
-	readcount = read(DATA->fd, DATA->inbuf->current, DATA->inbuf->write);
+
+	/* Determine how much data is available */
+	if (ioctl(DATA->fd, FIONREAD, &maxread) == -1)
+	{
+		/* Error while checking FIONREAD on filedescriptor */
+		err = errno;
+		SysErr(err, "Error on ioctl FIONREAD on input source");
+		maxread = INT_MAX;
+		DATA->state = is_eof;
+		return -1;
+	}
+
+	/* If no data is available */
+	if (maxread == 0)
+	{
+		Log2(debug, "No data available", "[input_tools.c]{read}");
+		DATA->state = is_eof;
+		return -1;
+	}
+	maxread = MIN(DATA->inbuf->write, maxread);
+	
+	readcount = read(DATA->fd, DATA->inbuf->current, maxread);
 	err = errno;
 
 	switch (readcount)
@@ -99,11 +76,27 @@ int input_handler_common_read (struct input_handler *this, struct reader *report
 			}
 
 		case 0:
-			/* EOF? */
-			Log2(debug, "Read '0' bytes from input source", "[input_tools.c]{read}");
-			SysErr(err, "Read '0' bytes from input source");
-			DATA->state = is_eof;
-			return -1;
+			/* '0' Bytes read, EOF? */
+			switch(err)
+			{
+				case EAGAIN:
+				case EINTR:
+					/* Recoverable */
+//
+// Bug found:
+// We should have read something, or do it now, or just wait for a reconnect...
+// Furthermore if it really was recoverable, we would have received a -1!!!!
+//
+// Log2(debug, "Recovered from '0' bytes read from input source", "[input_tools.c]{read}");
+// return 0;
+//
+					
+				default:
+					/* Fatal */
+					SysErr(err, "[input_tools.c]{read}: Read '0' bytes from input source");
+					DATA->state = is_eof;
+					return -1;
+			}
 
 		default:
 			/* Successfull read */
@@ -154,18 +147,35 @@ int input_handler_common_getfd (struct input_handler *this)
 
 int input_handler_common_cleanup (struct input_handler *this)
 {
-	input_buffer_free(DATA->inbuf);
-	
-	/* Close the filedescriptor */
-	if (close(DATA->fd) == -1)
+	if (this)
 	{
-		SysErr(errno, "[Common input] On closing file");
-		return 0;
+		if (DATA)
+		{
+			input_buffer_free(DATA->inbuf);
+		
+			/* Close the filedescriptor */
+			if (close(DATA->fd) == -1)
+			{
+				SysErr(errno, "[Common input] On closing file");
+				return 0;
+			}
+		
+			free(DATA);
+			this->priv = NULL;
+		}
+		else
+		{
+			CustomLog(__FILE__, __LINE__, error, "Input buffer was already destroyed?");
+		}
+		
+		free(this);
+		this = NULL;
+	}
+	else
+	{
+		CustomLog(__FILE__, __LINE__, error, "Trying to cleanup an already cleanup input handler?");
 	}
 
-	free(DATA);
-	free(this);
-	
 	/* All went well */
 	return 1;
 }
@@ -180,7 +190,7 @@ struct input_handler *input_handler_common_init (char *type, char *res, int fd)
 	Fatal(this == NULL, "Memory allocation failed!", "Error when loading input handler");
 
 	/* Print a checkpoint log message */
-	Log2(debug, res, "CP:IH[file]->init");
+	Log2(debug, res, "CP:IH->init");
 	
 	/* Allocate private data space */
 	this->priv = malloc (sizeof(struct ih_common_priv));
@@ -189,6 +199,8 @@ struct input_handler *input_handler_common_init (char *type, char *res, int fd)
 	SysFatal(this->priv == NULL, errno, "When allocating private data");
 	
 	/* Initialize fields */
+	this->type    = type;
+	this->res     = res;
 	this->err     = NULL;
 	this->read    = input_handler_common_read;
 	this->getfd   = input_handler_common_getfd;

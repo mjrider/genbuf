@@ -1,21 +1,3 @@
-/*Generic multiplexing line buffering tool
- * Copyright (C) 2004 Justin Ossevoort
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-
 #include "defines.h"
 #include "reader.h"
 
@@ -25,8 +7,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "buffer.h"
 #include "log.h"
@@ -35,7 +19,10 @@
 
 static void reader_add_source (struct reader *this, struct input_handler *handler)
 {
+	int oldstate;
 	void *tmp;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
 
 	if (this->handlers_alloc % HANDLERS_STEPPING == 0)
 	{
@@ -48,6 +35,8 @@ static void reader_add_source (struct reader *this, struct input_handler *handle
 			this->handlers[this->handler_count].handler = handler;
 			this->handlers[this->handler_count].fd      = handler->getfd(handler);
 
+			CustomLog(__FILE__, __LINE__, error, "add_source(handler=%p, [type=%s, res=%s, fd=%d])", handler, handler->type, handler->res, this->handlers[this->handler_count].fd);
+
 			Require(this->handlers[this->handler_count].fd != -1);
 
 			this->handler_count++;
@@ -59,24 +48,33 @@ static void reader_add_source (struct reader *this, struct input_handler *handle
 			handler->cleanup(handler);
 		}
 	}
+
+	pthread_setcancelstate(oldstate, NULL);
+
+	pthread_testcancel();
 }
 
 static void remove_handler (struct reader *this, int index)
 {
+	int oldstate;
 	struct input_handler *handler;
 	
 	Require(index >= 0 && index < this->handler_count);
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
+
 	FD_CLR(this->handlers[index].fd, &this->fds);
 	handler = this->handlers[index].handler;
 	
+	CustomLog(__FILE__, __LINE__, error, "remove_source(handler=%p, [type=%s, res=%s, fd=%d])", handler, handler->type, handler->res, this->handlers[index].fd);
+
 	if (index < this->handler_count - 1)
 	{
 		/* If not move the rest one place to the front */
 		memmove(
 			this->handlers + index,
 			this->handlers + (index + 1),
-			sizeof(struct handler_list)
+			sizeof(struct handler_list) * (this->handler_count - index - 1)
 		);
 	}
 
@@ -85,48 +83,60 @@ static void remove_handler (struct reader *this, int index)
 	
 	/* One handler less to worry about */
 	this->handler_count--;
+	
+	pthread_setcancelstate(oldstate, NULL);
+
+	pthread_testcancel();
 }
 
 static void reader_run (struct reader *this)
 {
-	int i, n, fd, active, status;
+	int i, n, fd, count, active, status;
 
+rerun:
 	do
 	{
 		active = 0;
 		n = 0;
 	
 		/* Cycle through the handlers to see who's responisble */
-		for (i = 0; i < this->handler_count; i++)
+		count = this->handler_count;
+		for (i = 0; i < count; i++)
 		{
-			fd = this->handlers[i].fd;
-			
-			if (FD_ISSET(fd, &this->fds))
+			if (FD_ISSET(this->handlers[i].fd, &this->fds))
 			{
 				struct input_handler *handler = this->handlers[i].handler;
 				
 				/* Got message, push it on the queue */
-			Log(debug, "I'm trying to cope with something here");
+				Log(debug, "I'm trying to cope with something here");
 				status = handler->read(handler, this);
-			Log(debug, "I think I coped with that quite nicely");
 				
 				switch (status)
 				{
 					case -1:
+						Log(debug, "Error in input_handler, removing it!");
 						remove_handler(this, i);
-						break;
+						goto rerun;
 					case 0:
 						/* Nothing special to report */
+						Log(debug, "I think I coped with that quite nicely");
 						break;
 					default:
+						Log(debug, "Unknown error from input_handler!");
 						fprintf(stderr, "Handler returned: %d!\n", status);
+						remove_handler(this, i);
+						goto rerun;
 				}
 			}
-			else
-			{
-				FD_SET(fd, &this->fds);
-			}
+		}
 
+		/* Re-activate fd's for select */
+		FD_ZERO(&this->fds);
+		count = this->handler_count;
+		for (i = 0; i < count; i++)
+		{
+			fd = this->handlers[i].fd;
+			FD_SET(fd, &this->fds);
 			n = MAX(fd, n);
 		}
 		
@@ -134,10 +144,34 @@ static void reader_run (struct reader *this)
 		if (this->handler_count == 0)
 			return;
 
-		n++;
 		Log(debug, "Calling select()");
 	}
-	while ((active = select(n, &this->fds, NULL, NULL, NULL)) != -1);
+	while ((active = select(n+1, &this->fds, NULL, NULL, NULL)) != -1);
+
+	if (errno == EBADF)
+	{
+		count = this->handler_count;
+		errno = 0;
+		Log(error, "Got bad filedescriptor, trying recover!");
+		for (i = 0; i < count; i++)
+		{
+			fd = this->handlers[i].fd;
+			if (fcntl(fd, F_GETFL) == -1)
+			{
+				if (errno == EBADF)
+				{
+					Log(error, "Recover succeeded, found bad filedescriptor!");
+				}
+				else
+				{
+					Log(error, "Bad filedescriptor expected, found something else, does this do the trick?");
+				}
+				
+				remove_handler(this, i);
+				goto rerun;
+			}
+		}
+	}
 	
 	SysErr(errno, "Select failed");
 }
