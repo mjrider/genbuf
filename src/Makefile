@@ -1,5 +1,7 @@
 # CC=gcc
 CFLAGS=-g -Wall -O2 -pipe -DNDEBUG
+PREFIX=/usr
+DESTDIR=$(PREFIX)/bin
 # CFLAGS=-g -Wall -O2 -pipe -march=pentium3 -mmmx -msse -m32 -DNDEBUG
 
 objs := main.o setup.o buffer.o options.o input_file.o input_tcp.o            \
@@ -37,5 +39,8 @@ clean:
 realclean: clean
 	$(echo) echo "Making really clean..."; \
 	rm -f *.d core*
+
+install: genbuf
+	install -s -m 755 -D genbuf $(DESTDIR)/genbuf
 
 include $(deps)

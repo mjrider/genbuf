@@ -1,0 +1,13 @@
+History of changes for Genbuf
+=============================
+
+Version: 0.1   (Currently maintained seperate from sourceforge)
+	* Initial public release
+
+Version: 0.1.1 (Currently maintained seperate from sourceforge)
+	* Some serious bugfixes
+
+Version: 0.2   (Currently maintained seperate from sourceforge)
+	* Major rewrite of the buffer logic
+	* Fixed a critical bug in the 'reader'
+	* Some memory leaks
