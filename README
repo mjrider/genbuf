@@ -1,0 +1,45 @@
+
+General information
+===================
+
+genbuf is a generic line buffering tool that can be used for about anything
+that is linebased and needs buffering.
+
+
+Supported streams
+=================
+
+Input types (one or more):
+	* file : File / Pipe / Fifo
+	* tcp  : TCP/IP
+	* udp  : UDP/IP
+	* unix : Unix Domain sockets
+
+Output types (one):
+	* file : File / Pipe / Fifo
+	* tcp  : TCP/IP
+	(TODO udp: UDP/IP)
+	(TODO unix: Unix domain sockets)
+
+	
+Backlog
+=======
+
+Genbuf has backlog support. If delivery fails 3 times, it will write the entire
+buffer to file. As soon as delivery succeeds again it will stop writing to the
+backlog and write the entire backlog to the recipient, afterwards it truncates
+the backlog and resumes with the buffer.
+
+
+Synopsis
+========
+
+genbuf:
+	-h(elp)
+	-v(erbose)
+	[-in  <type> -s((ou)rc(e))      <res>]+
+	[-out <type> -d((e)st(ination)) <res>]
+
+	<type>=file/udp/tcp/unix
+	<res>=filename/host:port
+
