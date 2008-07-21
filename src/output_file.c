@@ -28,7 +28,7 @@ static int output_file_connect (struct output_handler *this)
 		return TRUE;
 	}
 
-	this->fd = open(this->res, O_WRONLY|O_CREAT|O_APPEND);
+	this->fd = open(this->res, O_WRONLY|O_CREAT|O_APPEND, 0666);
 
 	/* Check if open succeeded */
 	if (this->fd == -1)
@@ -85,7 +85,6 @@ struct output_handler *output_handler_file_init (char *res)
 {
 	struct output_handler *retval = output_handler_common_init("file", res, (strcmp(res, "-") ? -1 : 1));
 	
-	retval->state      = os_ready;
 	retval->connect    = output_file_connect;
 	retval->disconnect = output_file_disconnect;
 
