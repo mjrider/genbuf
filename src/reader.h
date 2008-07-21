@@ -25,7 +25,7 @@ struct reader {
 	void (*cleanup) (struct reader*);
 };
 
-extern struct reader *reader_init();
+extern struct reader *reader_init(struct buffer *);
 
 #else
 struct reader;
