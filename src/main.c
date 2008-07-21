@@ -225,14 +225,16 @@ int main (int argc, char **argv)
 				/* Print a helpfull message */
 				fprintf(
 					stderr,
-						"%s:\n\t"
-						"-h(elp)\n"
-						"\t-v(erbose)\n"
-						"\t[-in  <type> -s((ou)rc(e))      <res>]+\n"
-						"\t[-out <type> -d((e)st(ination)) <res>]\n"
+						"%s:\n"
+						"\t-h/--help\n"
+						"\t-v/--verbose\n"
+						"\t-b/--backlog filename\n"
+						"\t[-i/--in  <type> -s/--s(ou)rc(e)      <res>]+\n"
+						"\t[-o/--out <type> -d/--d(e)st(ination) <res>]\n"
 						"\n"
 						"\t<type>=file/udp/tcp/unix\n"
-						"\t<res>=filename/host:port\n",
+						"\t<res>=filename/host:port\n"
+						"For more documentation check the readme",
 					argv[0]);
 				return EXIT_FAILURE;
 				

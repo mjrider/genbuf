@@ -35,10 +35,11 @@ Synopsis
 ========
 
 genbuf:
-	-h(elp)
-	-v(erbose)
-	[-in  <type> -s((ou)rc(e))      <res>]+
-	[-out <type> -d((e)st(ination)) <res>]
+	-h/--help 
+	-v/--verbose
+	-b/--backlog filename
+	[-i/--in  <type> -s/--s(ou)rc(e)      <res>]+
+	[-o/--out <type> -d/--d(e)st(ination) <res>]
 
 	<type>=file/udp/tcp/unix
 	<res>=filename/host:port
