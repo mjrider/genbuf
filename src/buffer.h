@@ -30,7 +30,7 @@ struct buffer {
 };
 
 extern struct buffer*
-	buffer_init ();
+	buffer_init (void);
 extern int
 	buffer_cleanup (struct buffer*);
 

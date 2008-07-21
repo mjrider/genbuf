@@ -112,7 +112,7 @@ static int buffer_size (struct buffer *buff)
 }
 
 struct buffer*
-	buffer_init ()
+	buffer_init (void)
 {
 	struct buffer *buff = (struct buffer*) malloc (sizeof(struct buffer));
 
