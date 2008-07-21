@@ -165,5 +165,5 @@ void SysErr (int err, const char *msg)
 	if (msg == NULL)
 		msg = "System error";
 	
-	Log2(error, strerror(errno), msg);
+	Log2(error, strerror(err), msg);
 }
