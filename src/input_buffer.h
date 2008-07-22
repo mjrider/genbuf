@@ -19,5 +19,6 @@ extern  int  input_buffer_purgeline (struct input_buffer *buffer);
 extern char *input_buffer_getline   (struct input_buffer *buffer);
 
 extern void  input_buffer_free      (struct input_buffer *buffer);
+extern void  input_buffer_print     (struct input_buffer *buffer);
 
 #endif /* GENCACHE_INPUT_BUFFER_H */
