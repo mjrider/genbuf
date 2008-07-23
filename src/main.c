@@ -53,8 +53,8 @@ static void run (struct reader *rd, struct logger *ld)
 	Log(error, "Starting threads!\n");
 
 	/* Create the worker threads */
-	SysFatal(pthread_create(&logthread,  NULL, (void*) ld->run, ld), errno, "On logger thread start");
-	SysFatal(pthread_create(&readthread, NULL, (void*) rd->run, rd), errno, "On reader thread start");
+	SysFatal(pthread_create(&logthread,  NULL, (void*(*)(void*))ld->run, ld), errno, "On logger thread start");
+	SysFatal(pthread_create(&readthread, NULL, (void*(*)(void*))rd->run, rd), errno, "On reader thread start");
 	
 	/* Register signal handlers for nice shutdown */
 	signal(SIGHUP, signal_handler);

@@ -69,7 +69,7 @@ static int logger_write_backlog (struct logger *this, FILE *backlog_out)
 	return 0;
 }
 
-static void logger_run (struct logger *this)
+static void * logger_run (struct logger *this)
 {
 	unsigned int msglen;
 	char *msg;
@@ -207,7 +207,7 @@ static void logger_run (struct logger *this)
 						/* End of buffer reached */
 						fclose(backlog_out);
 						fclose(backlog_in);
-						return;
+						return NULL;
 
 					default:
 						/* All went well, continue */
@@ -270,7 +270,7 @@ static void logger_run (struct logger *this)
 						/* End of buffer reached */
 						fclose(backlog_out);
 						fclose(backlog_in);
-						return;
+						return NULL;
 
 					default:
 						/* All went well, continue */
@@ -294,6 +294,7 @@ static void logger_run (struct logger *this)
 	}
 
 	/* We're done */
+	return NULL;
 }
 
 static void logger_cleanup (struct logger *this)
@@ -311,11 +312,14 @@ static void logger_cleanup (struct logger *this)
 
 struct logger *logger_init(struct buffer *buffer)
 {
+	struct logger *this;
+
 	/* Basic assertions */
 	Require(buffer != NULL);
 	
 	/* Create logger structure */
-	struct logger *this = (struct logger*) malloc (sizeof(struct logger));
+	
+	this = (struct logger*) malloc (sizeof(struct logger));
 	SysFatal(this == NULL, errno, "On logger structure creation");
 
 	/* Initialize variables */

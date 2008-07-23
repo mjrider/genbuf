@@ -89,7 +89,7 @@ static void remove_handler (struct reader *this, int index)
 	pthread_testcancel();
 }
 
-static void reader_run (struct reader *this)
+static void * reader_run (struct reader *this)
 {
 	int i, n, fd, count, active, status;
 
@@ -142,7 +142,7 @@ rerun:
 		
 		/* Check if there is anything left listening for */
 		if (this->handler_count == 0)
-			return;
+			return NULL;
 
 		Log(debug, "Calling select()");
 	}
@@ -174,6 +174,7 @@ rerun:
 	}
 	
 	SysErr(errno, "Select failed");
+	return NULL;
 }
 
 static void reader_report_data (struct reader *this, char *data)

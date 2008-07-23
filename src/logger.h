@@ -11,7 +11,7 @@ struct logger {
 	struct buffer         *buffer;
 
 	void (*set_destination) (struct logger*, struct output_handler*);
-	void (*run)             (struct logger*);
+	void * (*run)             (struct logger *);
 
 	void (*cleanup) (struct logger*);
 };

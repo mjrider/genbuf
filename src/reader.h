@@ -19,7 +19,7 @@ struct reader {
 	struct buffer *buffer;
 
 	void (*add_source)  (struct reader*, struct input_handler*);
-	void (*run)         (struct reader*);
+	void * (*run)         (struct reader *);
 	void (*report_data) (struct reader*, char*);
 
 	void (*cleanup) (struct reader*);
