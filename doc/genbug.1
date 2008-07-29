@@ -1,0 +1,31 @@
+.TH "genbuf" 1
+.SH NAME
+genbuf \- buffer line based data streamer
+.SH SYNOPSIS
+.B genbuf
+genbuf -b /backlog/file/to/use --in file -s - --out tcp -d remotehost:port
+.SH DESCRIPTION
+genbuf is a generic line buffering tool that can be used for about anything
+that is linebased and needs buffering.
+.SH OPTIONS
+.TP
+.B	-h/--help 
+Displays this information
+.TP
+.B	-v/--verbose
+Increased verbosity
+.TP
+.B	-b/--backlog filename
+Specify a backlogfile to use for when output is not available
+.TP
+.B	[-i/--in  <type> -s/--s(ou)rc(e)      <res>]+
+Input Resource
+.TP
+.B	[-o/--out <type> -d/--d(e)st(ination) <res>]
+Output resource
+.TP
+<type>=file/udp/tcp/unix
+<res>=filename/host:port
+.SH BUGS
+No Bugs known.
+
