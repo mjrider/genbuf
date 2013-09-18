@@ -1,0 +1,10 @@
+*.o
+*.d
+build-stamp
+configure-stamp
+debian/files
+debian/genbuf.debhelper.log
+debian/genbuf.substvars
+debian/genbuf/
+src/genbuf
+
