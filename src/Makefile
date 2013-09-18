@@ -41,4 +41,4 @@ realclean: clean
 install: genbuf
 	install -s -m 755 -D genbuf $(DESTDIR)/usr/bin/genbuf
 
-include $(deps)
+-include $(deps)
