@@ -1,5 +1,5 @@
 # CC=gcc
-CFLAGS=-g -Wall -O2 -pipe -DNDEBUG
+CFLAGS=-g -Wall -O2 -pipe -DNDEBUG -pthread
 # CFLAGS=-g -Wall -O2 -pipe -march=pentium3 -mmmx -msse -m32 -DNDEBUG
 
 objs := main.o setup.o buffer.o options.o input_file.o input_tcp.o            \
