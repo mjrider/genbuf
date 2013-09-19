@@ -3,6 +3,7 @@ genbuf (0.2.2) unstable; urgency=low
   * fixed compiling on modern systems
   * fixed make errors
   * fixed debian related errors
+  * bugfix: genbug segfaulted when called without arguments
 
  -- Robbert Müller <spam.me@grols.ch>  Thu, 19 Sep 2013 12:40:49 +0200
 

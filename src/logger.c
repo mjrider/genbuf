@@ -83,7 +83,10 @@ static void * logger_run (struct logger *this)
 	backlog_out = NULL;
 
 	/* Check if we've got a destination to log to */
-	Fatal(this->dest == NULL, "No destination set", "Logger");
+	if( this->dest == NULL ) {
+		Log2(critical, "No destination set", "Logger");
+		return NULL;
+	}
 
 	/* Try to open an old backlog file */
 	if ((backlog_in = fopen(this->backlog_file, "r")) != NULL)
