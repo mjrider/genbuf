@@ -56,7 +56,6 @@ static int output_udp_connect (struct output_handler *this)
 		{
 			/* Connection is established */
 			case EISCONN:
-//				shutdown(this->fd, 0);
 				this->state = os_ready;
 				return TRUE;
 			

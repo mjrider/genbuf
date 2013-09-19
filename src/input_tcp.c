@@ -45,7 +45,6 @@ static int input_handler_tcp_read (struct input_handler *this, struct reader *re
 		if (fd != -1)
 		{
 			/* Got a connection, create a new connection input handler */
-//			shutdown(fd, 1);
 			handler = input_handler_tcp_connection_init("<slave>", fd);
 
 			Fatal(handler == NULL, "NULL", "[TCP input handler] On connection handler creation");
