@@ -28,7 +28,6 @@ struct input_handler *input_handler_file_init (char *res)
 	else
 	{
 		/* Resource specifier should be a file, so try opening it */
-		//fd = open(res, O_RDONLY|O_NONBLOCK);
 		fd = open(res, O_RDONLY);
 	
 		/* Check to see if open failed */
