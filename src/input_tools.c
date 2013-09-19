@@ -82,14 +82,14 @@ int input_handler_common_read (struct input_handler *this, struct reader *report
 				case EAGAIN:
 				case EINTR:
 					/* Recoverable */
-//
-// Bug found:
-// We should have read something, or do it now, or just wait for a reconnect...
-// Furthermore if it really was recoverable, we would have received a -1!!!!
-//
-// Log2(debug, "Recovered from '0' bytes read from input source", "[input_tools.c]{read}");
-// return 0;
-//
+/*
+					Bug found:
+					We should have read something, or do it now, or just wait for a reconnect...
+					Furthermore if it really was recoverable, we would have received a -1!!!!
+
+					Log2(debug, "Recovered from '0' bytes read from input source", "[input_tools.c]{read}");
+					return 0;
+*/
 					
 				default:
 					/* Fatal */
