@@ -2,13 +2,16 @@ Source: genbuf
 Section: utils
 Priority: optional
 Maintainer: Justin Ossevoort <justin@snt.utwente.nl>
+Uploaders: Robbert Müller <spam.me@grols.ch>
 Build-Depends: debhelper (>= 4.0.0)
-Standards-Version: 3.8
+Standards-Version: 3.9.3
+Vcs-Browser: https://github.com/mjrider/genbuf
+Vcs-Git: https://github.com/mjrider/genbuf
 
 Package: genbuf
 Architecture: i386 amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: A multiplexed input generic line buffer with backlog support
+Description: Provideds a multiplexed input generic line buffer with backlog support
  General line based buffer with backlog written in "C". It supports multiple
  input and a single output. I/O modules: TCP/IP, UDP/IP, Unix sockets,
  File/Pipe.
